@@ -1,219 +1,150 @@
-# Oficina mecânica integrada
+# Oficina mecânica
 
-Sistema didático em memória que integra clientes, veículos, diagnóstico, atendimento, estoque, ordens de serviço e pagamentos simulados. Usa diretamente `ListaEncadeada`, `Fila`, `Pilha` e `NoArvore` implementados no próprio projeto.
+Projeto de uma oficina mecânica em Python, desenvolvido para aplicar estruturas de dados ao acompanhamento de um serviço: cadastro do cliente, entrada do veículo, diagnóstico, orçamento, uso de peças, execução e pagamento.
 
-## Executar
+## Problema e objetivo
 
-Use Python 3.10 ou superior. A entrega foi testada com Python 3.12.
+Uma oficina precisa relacionar cada veículo ao seu proprietário, organizar a espera e acompanhar o que acontece durante o reparo. A ordem de atendimento deve respeitar as prioridades, enquanto o consumo de peças precisa considerar o saldo disponível e os lotes recebidos. O diagnóstico, o orçamento e o pagamento pertencem à mesma visita e precisam permanecer associados.
 
-Depois de extrair o ZIP, abra o terminal na pasta `oficina_mecanica`:
+O sistema organiza esse fluxo por meio de ordens de serviço. Cada ordem identifica o veículo atendido, preserva o diagnóstico e os preços do orçamento, registra os lotes consumidos e controla as etapas até a quitação. As regras impedem situações como executar o mesmo serviço duas vezes, consumir apenas parte de um pedido que não pode ser atendido ou concluir um reparo com peças aguardando remontagem.
+
+O objetivo da atividade é implementar essas relações usando listas encadeadas, filas, pilhas e árvores próprias. Os dados são fictícios e ficam em memória durante a execução.
+
+## Organização do projeto
+
+O código está dividido por responsabilidade. A interface recebe os comandos do usuário; os cadastros mantêm os registros; as classes de serviço e estoque aplicam as regras de cada operação.
+
+| Arquivo ou pasta | Responsabilidade |
+|---|---|
+| `main.py` | Ponto de entrada único; chama a aplicação |
+| `interface/` | Menu, leitura de entradas, apresentação dos dados e demonstração automática |
+| `cliente/` | Dados dos clientes e operações de cadastro e consulta |
+| `oficina/` | Veículos, componentes, avaliações, diagnósticos e composição dos responsáveis |
+| `servico/` | Atendimento, ordens de serviço, itens e pagamentos |
+| `estoque/` | Produtos, lotes, pedidos e registros de consumo |
+| `estrutura_de_dados/` | Implementações genéricas de lista encadeada, fila, pilha e nó de árvore |
+| `dados/` | Clientes, veículos, componentes e produtos fictícios para iniciar o programa |
+| `requirements.txt` | Registro das dependências do projeto |
+
+### Interface e composição
+
+`Aplicacao`, em `interface/aplicacao.py`, seleciona o modo de execução. `Menu` apresenta as opções e encaminha cada comando para um grupo de operações: cadastros, estoque, atendimento, orçamento ou execução. `Entrada` concentra a leitura e a conversão dos valores do terminal. `RelatorioOrdem` apresenta os dados de uma ordem.
+
+`Oficina`, em `oficina/oficina.py`, monta os responsáveis e compartilha suas instâncias. `CadastroVeiculos` recebe o cadastro de clientes; `RegistroDiagnosticos` recebe o cadastro de veículos; `GestaoServicos` recebe os veículos, os diagnósticos e o estoque. Assim, as operações da sessão usam os mesmos registros.
+
+O domínio funciona sem depender do terminal. As chamadas a `input` e `print` ficam na interface, que também apresenta as mensagens de erro ao usuário.
+
+### Cadastros, serviços e estoque
+
+`CadastroClientes` mantém os clientes por código. `CadastroVeiculos` mantém os veículos por placa e confere se o proprietário pertence ao cadastro da oficina. O veículo consultado pelo cliente é o mesmo objeto mantido no cadastro de veículos.
+
+`RegistroDiagnosticos` preserva as visitas. Cada `Diagnostico` guarda os dados do veículo e do cliente, uma cópia da árvore de componentes e o histórico das avaliações.
+
+`GestaoServicos` coordena a fila e a abertura das ordens. `OrdemServico` controla o estado de uma visita e as operações permitidas em cada etapa. `ItemServico` preserva o produto, a quantidade e o preço unitário registrado no orçamento.
+
+No estoque, `CatalogoProdutos` cadastra e localiza produtos. `Produto` mantém os dados comerciais e utiliza `LotesProduto` para controlar seu saldo. `BaixaEstoque` reúne os pedidos, prepara as retiradas e confirma os saldos depois de validar todos os produtos envolvidos.
+
+## Estruturas de dados utilizadas
+
+| Estrutura | Onde é usada | Motivo |
+|---|---|---|
+| Lista encadeada | Clientes, veículos, diagnósticos, ordens, produtos, itens e históricos | Os registros precisam ser incluídos e percorridos, com consultas por identificador. A consulta de uma ordem não depende de ela ser a primeira a entrar. |
+| Duas filas | Espera normal e prioritária | Os prioritários são atendidos primeiro. Dentro de cada categoria, o primeiro veículo a entrar é o primeiro a ser atendido. |
+| Fila | Lotes de cada produto | O lote recebido primeiro fornece as primeiras unidades consumidas: FIFO. |
+| Pilha | Componentes desmontados durante uma ordem | A última peça retirada é a primeira a ser remontada: LIFO. |
+| Árvore n-ária | Componentes e subcomponentes do veículo | Um componente pode conter vários outros, formando uma hierarquia. |
+
+As estruturas genéricas estão em `estrutura_de_dados/` e não conhecem regras da oficina. O nó de árvore `NoArvore`, por exemplo, armazena os componentes do veículo sem precisar saber o que é um motor ou uma pastilha.
+
+### Atendimento por prioridade
+
+A classe `Atendimento` possui uma fila normal e uma prioritária. Ao solicitar o próximo atendimento, consulta primeiro a prioritária e recorre à normal quando aquela está vazia.
+
+Se um carro normal chegar antes de um prioritário, mas ambos ainda estiverem aguardando, o prioritário será atendido primeiro. Um serviço já iniciado continua sua execução. A prioridade é informada ao enfileirar o veículo.
+
+Depois da abertura do serviço, a ordem fica em uma lista encadeada. Isso permite que serviços sejam consultados e concluídos em uma sequência diferente da chegada dos carros.
+
+### Lotes e remontagem
+
+No estoque, um lote parcialmente consumido permanece na frente da fila. Ele só é removido quando seu saldo chega a zero. Os códigos de lotes recebidos também são mantidos em uma lista para impedir sua reutilização no mesmo produto.
+
+Na execução, cada desmontagem coloca o código do componente no topo da pilha da ordem. A remontagem retira esse topo. Essa sequência representa o exercício de desmontar e remontar em ordem inversa; não é um procedimento técnico de reparo de um veículo real.
+
+### Componentes do veículo
+
+A árvore representa relações de composição. Por exemplo, o veículo contém o sistema de freios, que contém uma pastilha e um disco. Cada nó pode ter vários filhos, por isso a estrutura é n-ária.
+
+O diagnóstico percorre essa árvore para apresentar os componentes e suas avaliações. Uma nova visita recebe uma cópia independente, preservando o registro das visitas anteriores.
+
+## Fluxo do código
+
+1. **Inicialização:** `main.py` chama `Aplicacao.iniciar`. A aplicação lê os argumentos e abre a seleção inicial, o menu ou a demonstração.
+2. **Carga dos dados:** `DadosExemplo.criar_oficina` cria a oficina, cadastra os clientes, vincula os veículos e recebe os lotes dos produtos fictícios.
+3. **Entrada na fila:** `GestaoServicos.enfileirar` localiza o veículo, verifica se há uma ordem ainda não quitada e o encaminha para `Atendimento`.
+4. **Abertura da visita:** `GestaoServicos.atender_proximo` valida o identificador, consulta o próximo veículo e registra o diagnóstico e a ordem antes de retirar o carro da fila.
+5. **Diagnóstico e orçamento:** o operador avalia os componentes, informa os produtos necessários e define a mão de obra. O diagnóstico é encerrado e o orçamento é aprovado.
+6. **Início da execução:** a ordem solicita a baixa ao estoque. Os pedidos do mesmo produto são somados, os saldos são conferidos e o consumo FIFO é preparado em cópias dos lotes.
+7. **Confirmação do consumo:** depois da validação de todos os produtos, as filas preparadas substituem os saldos anteriores e os registros de consumo ficam associados à ordem.
+8. **Reparo e conclusão:** as desmontagens e remontagens são registradas. A ordem pode ser concluída quando estiver em execução e não houver peças na pilha.
+9. **Pagamento:** uma ordem concluída aceita uma quitação integral simulada. Depois de paga, permanece disponível para consulta e o veículo pode iniciar outra visita.
+
+### Estados da ordem
+
+| Estado | Operações principais |
+|---|---|
+| Aberta | Registrar avaliações, adicionar itens, definir mão de obra e aprovar o orçamento após encerrar o diagnóstico |
+| Aprovada | Iniciar a execução e confirmar o consumo das peças |
+| Em execução | Registrar desmontagem e remontagem; concluir quando não houver peças desmontadas |
+| Concluída | Registrar o pagamento |
+| Paga | Consultar o histórico |
+
+A aprovação bloqueia alterações nos itens e na mão de obra. Executar ou pagar novamente uma ordem já processada gera erro. Também é possível aprovar um serviço apenas de mão de obra, sem consumo de produtos.
+
+## Regras de diagnóstico e estoque
+
+Um componente começa como `NAO_AVALIADO`. A inspeção pode registrá-lo como `COM_DEFEITO` ou `SEM_DEFEITO_IDENTIFICADO`. Reavaliar um componente atualiza seu resultado e preserva a avaliação anterior no histórico. Encerrar o diagnóstico mantém os componentes não examinados como não avaliados.
+
+O produto utilizado no reparo é escolhido pelo operador. A árvore descreve os componentes do veículo, enquanto o estoque contém os produtos disponíveis para uso; a ligação entre eles é registrada no item da ordem.
+
+A baixa considera o pedido inteiro. Se faltar um produto, houver saldo insuficiente ou algum pedido for inválido, os demais saldos permanecem intactos. A ordem continua aprovada, permitindo receber peças e tentar a execução novamente. Não há reserva de estoque durante a elaboração do orçamento.
+
+Os valores monetários usam `Decimal`. O preço de venda é preservado no item da ordem, e o custo de entrada é preservado no registro de consumo do lote. Alterações posteriores no preço do produto não modificam o orçamento já registrado. Quantidades precisam ser inteiras positivas; os valores monetários não aceitam frações de centavo.
+
+## Pagamentos
+
+As formas disponíveis são PIX, Débito, Crédito e Bitcoin. Todas registram uma quitação simulada dentro do programa, com o total em reais.
+
+O sistema não realiza cobranças, transferências, conversão de criptomoedas ou parcelamentos. A opção Bitcoin identifica a forma escolhida na simulação, sem calcular uma quantidade em BTC.
+
+## Execução
+
+**Versão adotada no projeto: Python 3.15.** O programa utiliza somente a biblioteca padrão. O `requirements.txt` não possui pacotes externos para instalar.
+
+Na pasta `oficina_mecanica`, execute:
 
 ```bash
 python main.py
 ```
 
-O início permite escolher **operar a oficina**, **demonstração automática** ou **sair**. Também é possível iniciar diretamente um dos modos:
+O menu inicial permite escolher a operação manual ou a demonstração automática. Para entrar diretamente em um modo:
 
 ```bash
 python main.py --menu
 python main.py --demo
 ```
 
-Não há pacotes externos. O `requirements.txt` foi incluído para registrar esse fato; não lista bibliotecas que já fazem parte do Python. Opcionalmente, o comando habitual continua válido:
+### Operação manual
 
-```bash
-python -m pip install -r requirements.txt
-```
+O menu permite cadastrar clientes e veículos, cadastrar produtos, receber lotes, organizar a fila e acompanhar cada etapa de uma ordem. As consultas mostram os códigos disponíveis para as próximas operações.
 
-Todos os dados são mantidos somente durante a execução. Cada entrada em um modo cria uma nova oficina com dados fictícios. Sair de um modo e entrar novamente reinicia esses dados.
+Com os dados iniciais, um fluxo de exemplo é:
 
-## Pagamentos
-
-São aceitas as formas **PIX, Débito, Crédito e Bitcoin** para uma quitação integral simulada da ordem.
-
-Não há cobrança, integração bancária, consulta de cotação, geração de endereço de carteira ou transferência de criptomoeda. Inclusive na opção Bitcoin, o programa registra o total da ordem **em reais**, identificado como simulação. Crédito não implica parcelamento nesta etapa.
-
-A confirmação no menu marca a ordem como paga somente dentro do exercício. Uma ordem paga não aceita outro pagamento nem outra baixa de estoque.
-
-## Arquivos e responsabilidades
-
-Existe apenas um `main.py`, na raiz. Ele importa a aplicação e chama seu ponto de entrada. A navegação, os comandos e a demonstração estão no pacote `interface`.
-
-| Arquivo ou grupo | Responsabilidade |
+| Opção | Dados informados |
 |---|---|
-| `main.py` | Iniciar a aplicação; 4 linhas, sem classes de domínio ou menu |
-| `interface/aplicacao.py` | Selecionar o modo inicial e tratar falhas de execução |
-| `interface/menu.py` | Mostrar opções, despachar comandos e apresentar erros |
-| `interface/entrada.py` e `encerramento.py` | Ler entradas e sinalizar saída |
-| `interface/cadastros.py` | Ações de clientes e veículos no terminal |
-| `interface/estoque.py` | Ações de produtos e lotes no terminal |
-| `interface/atendimento.py` | Ações da fila e abertura de ordens |
-| `interface/orcamento.py` | Entrada de avaliações e preparação do orçamento |
-| `interface/execucao.py` | Ações de execução, remontagem e pagamento |
-| `interface/relatorio_ordem.py` | Exibir os dados de uma ordem |
-| `interface/demonstracao.py` | Executar o cenário automático completo |
-| `oficina/oficina.py` | Montar e compartilhar os responsáveis; 43 linhas |
-| `cliente/cadastro.py` | Cadastrar, buscar e listar clientes |
-| `cliente/cliente.py` | Dados de um cliente e sua lista de veículos |
-| `oficina/cadastro_veiculos.py` | Cadastrar veículos e manter o vínculo com o proprietário |
-| `oficina/registro_diagnosticos.py` | Abrir, registrar e consultar visitas |
-| `oficina/veiculo.py` | Identificação, proprietário e árvore de componentes |
-| `oficina/componentes.py`, `avaliacao.py` e `diagnostico.py` | Componentes, resultados e histórico de inspeção |
-| `oficina/validacao.py` | Validar os valores recebidos pelo domínio |
-| `estoque/estoque.py` | Encaminhar as operações ao catálogo e à baixa; 78 linhas |
-| `estoque/catalogo.py` | Cadastrar e localizar produtos |
-| `estoque/produto.py` | Identificação e preço comercial |
-| `estoque/lotes_produto.py` | Receber lotes e planejar seu consumo FIFO |
-| `estoque/lote.py` | Dados e saldo de um lote |
-| `estoque/pedido.py` e `consumo.py` | Quantidades solicitadas e registros das retiradas |
-| `estoque/baixa.py` | Agrupar pedidos e confirmar a baixa completa |
-| `servico/gestao_servicos.py` | Coordenar a abertura e as operações das ordens |
-| `servico/atendimento.py` | Filas normal e prioritária |
-| `servico/ordem_servico.py` | Proteger o ciclo de vida de uma ordem |
-| `servico/item_servico.py` | Preservar quantidade e preço de cada item |
-| `servico/pagamento.py` | Formas de pagamento e quitação simulada |
-| `dados/veiculos.py` | Carga de dados fictícios |
-| `estrutura_de_dados/` | Estruturas genéricas preservadas byte a byte |
-
-A separação acompanha responsabilidades. `Menu` conhece os comandos, mas não cadastra clientes nem calcula consumo. Cada grupo recebe apenas os responsáveis de que precisa. A demonstração usa o domínio diretamente e compartilha a apresentação dos consumos com o relatório.
-
-`Oficina` monta os objetos uma vez: o cadastro de veículos recebe o mesmo cadastro de clientes; o registro de diagnósticos recebe os mesmos veículos; a gestão de serviços recebe esses registros e o estoque compartilhado. Suas propriedades são somente leitura, evitando substituir acidentalmente uma dependência durante a sessão.
-
-No estoque, o catálogo mantém os produtos, o controle de lotes prepara retiradas FIFO e `BaixaEstoque` confirma o conjunto depois das validações. A confirmação usa métodos internos do produto e do controle de lotes; não altera diretamente os atributos de outra entidade. O planejamento continua em cópias, preservando os saldos em caso de falha de validação.
-
-`OrdemServico` continua protegendo suas próprias transições: aprovar, executar, concluir e pagar. Essas operações dependem do estado da mesma ordem. O item comercial foi extraído para seu módulo, enquanto as regras que impedem execução ou pagamento repetidos permanecem na ordem.
-
-As dependências são passadas aos construtores e validadas. O domínio não importa a interface e não chama `input` ou `print`. As estruturas próprias continuam sendo usadas diretamente; não foi criada outra árvore.
-
-### Acessos pelo código após a refatoração
-
-O menu mantém as mesmas opções e entradas. Para chamar o projeto por outro código Python, os acessos passaram a indicar o responsável:
-
-| Acesso anterior | Acesso atual |
-|---|---|
-| `oficina.cadastrar_cliente(cliente)` | `oficina.clientes.cadastrar(cliente)` |
-| `oficina.buscar_cliente(codigo)` | `oficina.clientes.buscar(codigo)` |
-| `oficina.listar_clientes()` | `oficina.clientes.listar()` |
-| `oficina.quantidade_clientes` | `oficina.clientes.quantidade` |
-| `oficina.cadastrar_veiculo(veiculo)` | `oficina.veiculos.cadastrar(veiculo)` |
-| `oficina.buscar_veiculo(placa)` | `oficina.veiculos.buscar(placa)` |
-| `oficina.listar_veiculos()` | `oficina.veiculos.listar()` |
-| `oficina.quantidade_veiculos` | `oficina.veiculos.quantidade` |
-| `oficina.iniciar_diagnostico(codigo, placa)` | `oficina.diagnosticos.abrir(codigo, placa)` |
-| `oficina.buscar_diagnostico(codigo)` | `oficina.diagnosticos.buscar(codigo)` |
-| `oficina.listar_diagnosticos()` | `oficina.diagnosticos.listar()` |
-| `oficina.quantidade_diagnosticos` | `oficina.diagnosticos.quantidade` |
-| `oficina.registrar_avaliacao(codigo, componente, estado)` | `oficina.diagnosticos.buscar(codigo).registrar(componente, estado)` |
-| `oficina.encerrar_diagnostico(codigo)` | `oficina.diagnosticos.buscar(codigo).encerrar()` |
-| `oficina.enfileirar(placa, prioritario)` | `oficina.servicos.enfileirar(placa, prioritario)` |
-| `oficina.atender_proximo(codigo)` | `oficina.servicos.atender_proximo(codigo)` |
-| `oficina.buscar_ordem(codigo)` | `oficina.servicos.buscar_ordem(codigo)` |
-| `oficina.listar_ordens()` | `oficina.servicos.listar_ordens()` |
-| `oficina.quantidade_ordens` | `oficina.servicos.quantidade_ordens` |
-| `oficina.adicionar_item(...)` | `oficina.servicos.adicionar_item(...)` |
-| `oficina.executar_ordem(codigo)` | `oficina.servicos.executar_ordem(codigo)` |
-| `oficina.pagar_ordem(codigo, forma)` | `oficina.servicos.pagar_ordem(codigo, forma)` |
-| `oficina.atendimento` | `oficina.servicos.atendimento` |
-
-Importe cada entidade pelo módulo responsável: `from estoque.produto import Produto`, `from estoque.lote import Lote`, `from estoque.pedido import PedidoEstoque`, `from estoque.consumo import ConsumoLote` e `from servico.item_servico import ItemServico`. Para a demonstração, use `from interface.demonstracao import Demonstracao`. Esses caminhos substituem os imports concentrados em `main.py` e `estoque/estoque.py`.
-
-## Dados de exemplo
-
-A carga inicial contém:
-
-- três clientes fictícios, identificados por código;
-- quatro carros, com dois deles vinculados ao mesmo cliente;
-- uma árvore independente com motor, freios e sistema elétrico para cada carro;
-- quatro produtos, cada um com dois lotes: 3 unidades no `LOTE-A` e 9 no `LOTE-B`;
-- preços e custos definidos exclusivamente para o exercício.
-
-O cliente do veículo agora é um objeto `Cliente`, e não um nome solto. A lista do cliente e a lista da oficina apontam para o mesmo carro. O vínculo do proprietário é somente leitura; não foi implementada transferência de propriedade.
-
-Cadastrar um veículo pelo menu usa a composição padrão descrita em `dados/veiculos.py`, sem presumir que ela corresponda à composição real de determinado modelo.
-
-## Estruturas utilizadas
-
-| Informação ou operação | Estrutura própria |
-|---|---|
-| Clientes, veículos, diagnósticos e ordens | `ListaEncadeada` |
-| Veículos pertencentes a um cliente | `ListaEncadeada` |
-| Produtos do estoque | `ListaEncadeada` |
-| Lotes disponíveis de cada produto | `Fila` |
-| Espera normal e prioritária | Duas `Fila` |
-| Itens da ordem, avaliações e consumos | `ListaEncadeada` |
-| Peças desmontadas em cada ordem | `Pilha` |
-| Componentes e subcomponentes | `NoArvore` |
-
-Tuplas nos dados de exemplo representam registros de entrada. Dicionários do terminal servem apenas para selecionar comandos; não substituem as coleções de domínio.
-
-O estoque guarda códigos de lotes já recebidos em uma lista própria. Isso impede reutilizar o código de um lote esgotado para o mesmo produto.
-
-## Regras do fluxo
-
-1. Cadastre o cliente antes de cadastrar seu veículo.
-2. Enfileire o carro como normal ou prioritário.
-3. Inicie o próximo atendimento informando um código de ordem ainda não usado. A ordem e seu diagnóstico compartilham esse identificador.
-4. Registre as avaliações dos componentes, escolha explicitamente os produtos necessários e informe a mão de obra.
-5. Encerre o diagnóstico e aprove o orçamento.
-6. Inicie a execução. O estoque verifica todas as peças e confirma a baixa completa.
-7. Registre a desmontagem, quando aplicável, e remonte as peças na ordem inversa.
-8. Conclua o serviço e registre o pagamento simulado.
-
-### Prioridade
-
-A fila prioritária é sempre consultada primeiro. Dentro de cada categoria, o atendimento respeita a ordem de entrada. Um novo prioritário passa à frente dos normais ainda aguardando; o serviço já iniciado não é interrompido.
-
-A conclusão dos serviços não precisa seguir a ordem de chegada. Por isso, as ordens ficam em uma lista, e não na fila de espera. Um veículo não pode entrar duas vezes nas filas nem iniciar outra ordem antes de quitar a anterior.
-
-### Diagnóstico e orçamento
-
-Um componente começa como `NAO_AVALIADO`. As avaliações válidas são `COM_DEFEITO` e `SEM_DEFEITO_IDENTIFICADO`. Um defeito não seleciona automaticamente um produto do estoque: essa ligação é informada na ordem.
-
-O diagnóstico preserva código e nome do cliente, placa, modelo e uma cópia da árvore da visita. Uma nova avaliação substitui o resultado atual, mas mantém o registro anterior no histórico.
-
-Encerrar o diagnóstico não conclui o reparo nem declara o veículo sem defeitos. Avaliações parciais são permitidas, e componentes não examinados continuam identificados como não avaliados.
-
-A aprovação bloqueia alterações dos itens e da mão de obra. Uma ordem precisa ter algum item ou mão de obra com valor positivo. Serviços somente de mão de obra são permitidos e não geram uma baixa fictícia no estoque.
-
-### Estoque e preços
-
-Os lotes são consumidos em FIFO. Um lote parcialmente utilizado continua na frente; só sai da fila quando seu saldo chega a zero.
-
-As quantidades de itens repetidos do mesmo produto são somadas antes da verificação. As retiradas são preparadas em cópias dos lotes. Somente depois de todos os produtos serem validados as filas preparadas substituem as originais.
-
-Falta de saldo, produto inexistente ou pedido inválido não reduz outros saldos. A ordem permanece aprovada, permitindo receber um novo lote e tentar a execução novamente. Não há reserva antecipada: entre ordens aprovadas, o estoque é confirmado na ordem de execução.
-
-Cada ordem preserva o preço unitário de venda no momento da inclusão do item. Alterar o preço do produto depois não muda ordens anteriores. Os registros de consumo preservam separadamente os lotes, as quantidades e os custos de entrada.
-
-Os valores usam `Decimal`, com duas casas decimais. `float`, valores não finitos, negativos e frações de centavo não são aceitos. No terminal, pode-se digitar ponto ou vírgula como separador decimal, sem separadores de milhares.
-
-### Desmontagem e conclusão
-
-A pilha pertence à ordem de serviço. Retirar um componente não o exclui da árvore do veículo. Remontar retira o topo da pilha e registra qual peça foi recolocada.
-
-A mesma peça não pode ser empilhada duas vezes sem ser recolocada. A conclusão fica bloqueada enquanto houver peças desmontadas. As operações de retirada e recolocação permanecem no histórico da ordem.
-
-| Situação | Próxima operação principal |
-|---|---|
-| Aberta | Encerrar diagnóstico e aprovar orçamento |
-| Aprovada | Iniciar execução e confirmar estoque |
-| Em execução | Executar e remontar as peças retiradas |
-| Concluída | Registrar pagamento simulado |
-| Paga | Consultar histórico; permitir nova visita do veículo |
-
-Não foram implementados cancelamentos, devoluções, estornos ou parcelamentos.
-
-## Percurso manual no menu
-
-Um exemplo usando os dados iniciais:
-
-| Opção | Entrada principal |
-|---|---|
-| 7 — Enfileirar | `TST1A01`, categoria normal |
-| 7 — Enfileirar | `TST1A02`, categoria prioritária |
-| 8 — Atender | Código `OS001`; o carro atendido será `TST1A02` |
-| 10 — Avaliar | `OS001`, `PASTILHA_DE`, com defeito, observação livre |
-| 11 — Adicionar item | `OS001`, `PASTILHA_DE`, produto `PASTILHA`, quantidade 2 |
+| 7 — Enfileirar | `TST1A01`, normal; depois `TST1A02`, prioritário |
+| 8 — Atender | Código da ordem `OS001`; o veículo atendido será `TST1A02` |
+| 10 — Avaliar | `OS001`, componente `PASTILHA_DE`, resultado e observação |
+| 11 — Adicionar item | `OS001`, componente `PASTILHA_DE`, produto `PASTILHA`, quantidade 2 |
 | 12 — Mão de obra | `OS001`, valor 80 |
 | 13 — Encerrar diagnóstico | `OS001` |
 | 14 — Aprovar | `OS001` |
@@ -221,46 +152,25 @@ Um exemplo usando os dados iniciais:
 | 16 — Desmontar | `OS001`, componente `PASTILHA_DE` |
 | 17 — Remontar | `OS001` |
 | 18 — Concluir | `OS001` |
-| 19 — Pagar | `OS001`, forma escolhida |
+| 19 — Pagar | `OS001`, forma de pagamento |
 | 20 — Detalhar | `OS001` |
 
-As demais opções permitem cadastrar clientes, veículos e produtos, receber lotes, consultar filas e listar os registros. Entradas inválidas apresentam uma mensagem e devolvem o controle ao menu.
+### Demonstração automática
 
-## Demonstração automática
+A demonstração cria quatro atendimentos completos. Os carros entram alternando entre normal e prioritário, resultando na sequência `TST1A02`, `TST1A04`, `TST1A01` e `TST1A03`.
 
-O modo `--demo` cria uma oficina nova e enfileira os carros nas categorias normal, prioritária, normal e prioritária.
+Cada ordem registra a avaliação, inclui duas pastilhas, define a mão de obra, aprova o orçamento, consome o estoque, desmonta e remonta componentes e registra uma das quatro formas de pagamento. A saída mostra a prioridade, o consumo entre lotes e a ordem inversa de remontagem.
 
-A ordem de atendimento resultante é `TST1A02`, `TST1A04`, `TST1A01`, `TST1A03`. São concluídas quatro ordens de R$ 320,00: duas pastilhas de R$ 120,00 mais R$ 80,00 de mão de obra. Cada ordem usa uma das quatro formas de pagamento.
+## Convenções do código
 
-A segunda ordem demonstra consumo entre lotes: utiliza a unidade restante do `LOTE-A` e uma unidade do `LOTE-B`. Depois das quatro ordens, o saldo de `PASTILHA` é 4 unidades. O modo também mostra a remontagem em ordem inversa e preserva os históricos até terminar o processo.
+As classes e os métodos usam nomes em português e docstrings no estilo Google. Os métodos têm até dez linhas de lógica, sem contar assinatura, docstrings e comentários.
 
-## Código e verificações
+As entradas são validadas antes de alterar os registros. Exceções específicas são tratadas em blocos curtos de `try/except`; na interface, a falha é apresentada e o controle retorna ao menu. As propriedades que permitem alteração validam o novo valor no setter, enquanto identificadores e vínculos estáveis são somente leitura.
 
-As classes e os métodos possuem docstrings em português no estilo Google. Todos os métodos do projeto têm até dez linhas não vazias de lógica, desconsiderando assinatura, docstrings e comentários. Os blocos `try` têm até duas linhas de corpo. Foram preservadas as restrições de não usar `if`, `else` ou `while`.
+A atividade adota a restrição de não utilizar `if`, `else` ou `while`. O código utiliza iterações com `for`, mapeamento de comandos e validações com exceções para seguir essa convenção.
 
-As exceções são específicas e tratadas em blocos pequenos. A adaptação de condições booleanas com `tuple.index` atende à restrição solicitada; não representa uma recomendação geral para escrever Python.
+## Escopo
 
-Foram aprovados **65 testes externos**, incluindo:
+A carga inicial contém três clientes, quatro veículos e quatro produtos fictícios. Os veículos usam uma composição de componentes definida para a atividade, sem representar um modelo real específico.
 
-- vínculos entre clientes e veículos, identificadores e duplicidades;
-- prioridade absoluta e FIFO dentro de cada fila;
-- preservação da fila quando a abertura de uma ordem falha;
-- consumo parcial de lotes, soma de pedidos repetidos e falta de saldo sem baixa parcial;
-- preservação de preços, orçamento e histórico de avaliações;
-- transições da ordem, pilha de remontagem e bloqueio de operações repetidas;
-- as quatro formas de pagamento e a liberação do veículo para uma nova visita;
-- demonstração automática e operação completa pelo menu em subprocessos;
-- importação de `main.py` sem execução, EOF e opções inválidas;
-- 1.000 operações aleatórias na lista e retiradas comparadas a um modelo de referência;
-- docstrings, limite dos métodos e preservação byte a byte das estruturas próprias;
-- ponto de entrada mínimo e domínio independente do terminal;
-- dependências compartilhadas, propriedades somente leitura e rejeição de argumentos inválidos;
-- importação isolada de todos os módulos, verificando dependências circulares.
-
-Os testes de desenvolvimento foram executados fora do ZIP. Os exemplos das docstrings podem ser verificados na pasta do projeto com:
-
-```bash
-python -m doctest estrutura_de_dados/no.py estrutura_de_dados/lista_encadeada.py estrutura_de_dados/fila.py estrutura_de_dados/pilha.py estrutura_de_dados/no_arvore.py oficina/oficina.py
-```
-
-O projeto é um exercício local em memória: não possui persistência, autenticação, acesso concorrente ou integração de pagamentos. Não altere os atributos internos iniciados por `_`. As buscas nas estruturas são lineares, e a cópia da árvore pode custar O(n²) devido à validação de ancestrais.
+Os dados existem apenas em memória. Cada entrada no menu ou na demonstração cria uma nova oficina com a carga inicial. O projeto não inclui banco de dados, execução concorrente, cancelamento de ordens, devolução de peças ou estorno de pagamentos.

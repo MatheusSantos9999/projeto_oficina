@@ -1,2 +1,2 @@
-# Projeto executado com Python 3.10 ou superior.
-# Utiliza somente a biblioteca padrão; não há pacotes externos a instalar.
+# Python 3.15.
+# O projeto utiliza somente a biblioteca padrão, sem dependências externas.
