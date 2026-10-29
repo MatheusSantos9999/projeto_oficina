@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Oficina mecânica
 
 Projeto de uma oficina mecânica em Python, desenvolvido para aplicar estruturas de dados ao acompanhamento de um serviço: cadastro do cliente, entrada do veículo, diagnóstico, orçamento, uso de peças, execução e pagamento.
@@ -174,3 +175,6 @@ A atividade adota a restrição de não utilizar `if`, `else` ou `while`. O cód
 A carga inicial contém três clientes, quatro veículos e quatro produtos fictícios. Os veículos usam uma composição de componentes definida para a atividade, sem representar um modelo real específico.
 
 Os dados existem apenas em memória. Cada entrada no menu ou na demonstração cria uma nova oficina com a carga inicial. O projeto não inclui banco de dados, execução concorrente, cancelamento de ordens, devolução de peças ou estorno de pagamentos.
+=======
+
+>>>>>>> 45b192f7c98ac0a4b30412a4cf72a8f6db033eda
