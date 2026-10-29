@@ -1,5 +1,6 @@
 """Cadastro do veículo e de sua composição física."""
 from itertools import count
+from cliente.cliente import Cliente
 
 from estrutura_de_dados import NoArvore, Pilha
 from oficina.componentes import Componente
@@ -12,16 +13,16 @@ class Veiculo:
     Attributes:
         placa (str): Identificação normalizada e somente leitura.
         modelo (str): Descrição editável do modelo.
-        cliente (str): Nome do cliente, sem implementar seu cadastro completo.
+        cliente (Cliente): Proprietário cadastrado, com vínculo somente leitura.
     """
 
-    def __init__(self, placa, modelo, cliente=""):
+    def __init__(self, placa, modelo, cliente):
         """Cria um veículo com uma árvore contendo somente a raiz.
 
         Args:
             placa (str): Identificação do veículo.
             modelo (str): Descrição não vazia do modelo.
-            cliente (str): Nome opcional do cliente associado ao veículo.
+            cliente (Cliente): Cadastro do proprietário do veículo.
 
         Raises:
             TypeError: Se os argumentos não forem textos.
@@ -29,7 +30,8 @@ class Veiculo:
         """
         self._placa = Validacao.placa(placa)
         self.modelo = modelo
-        self.cliente = cliente
+        Validacao.tipo(cliente, Cliente, "Cliente")
+        self._cliente = cliente
         self._componentes = NoArvore(Componente("VEICULO", "Veículo"))
 
     @property
@@ -146,17 +148,6 @@ class Veiculo:
 
     @property
     def cliente(self):
-        """str: Nome informado do cliente associado ao veículo."""
+        """Cliente: Cadastro do proprietário, compartilhado com a oficina."""
         return self._cliente
 
-    @cliente.setter
-    def cliente(self, valor):
-        """Valida o nome do cliente antes de atualizá-lo.
-
-        Args:
-            valor (str): Nome ou texto vazio quando ainda não informado.
-
-        Raises:
-            TypeError: Se o valor não for texto.
-        """
-        self._cliente = Validacao.texto(valor, "Cliente", True)

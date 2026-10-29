@@ -1,16 +1,25 @@
-"""Veículos e clientes fictícios, sem relação com cadastros reais."""
+"""Clientes, veículos e estoque fictícios para demonstração local."""
+from cliente.cliente import Cliente
+from estoque.produto import Produto
+from estoque.lote import Lote
 from oficina.componentes import Componente
 from oficina.oficina import Oficina
 from oficina.veiculo import Veiculo
 
-# Cada registro contém cliente, placa fictícia e modelo de exemplo.
-VEICULOS = (
-    ("Cliente fictício 01", "TST1A01", "Hatch de exemplo"),
-    ("Cliente fictício 02", "TST1A02", "Sedã de exemplo"),
-    ("Cliente fictício 03", "TST1A03", "Utilitário de exemplo"),
+CLIENTES = (
+    ("CLI001", "Cliente fictício 01"),
+    ("CLI002", "Cliente fictício 02"),
+    ("CLI003", "Cliente fictício 03"),
 )
 
-# O pai aparece antes dos filhos para permitir a montagem da hierarquia.
+# O primeiro campo liga o carro ao cliente cadastrado.
+VEICULOS = (
+    ("CLI001", "TST1A01", "Hatch de exemplo"),
+    ("CLI002", "TST1A02", "Sedã de exemplo"),
+    ("CLI003", "TST1A03", "Utilitário de exemplo"),
+    ("CLI001", "TST1A04", "Segundo carro de exemplo"),
+)
+
 COMPONENTES = (
     ("VEICULO", "MOTOR", "Motor"),
     ("MOTOR", "VELA_1", "Vela 1"),
@@ -21,48 +30,86 @@ COMPONENTES = (
     ("ELETRICA", "BATERIA", "Bateria"),
 )
 
+# Valores de venda e custo em reais, definidos somente para o exercício.
+PRODUTOS = (
+    ("PASTILHA", "Pastilha de exemplo", "120.00", "65.00"),
+    ("DISCO", "Disco de exemplo", "200.00", "110.00"),
+    ("VELA", "Vela de exemplo", "70.00", "35.00"),
+    ("BATERIA", "Bateria de exemplo", "350.00", "240.00"),
+)
+
 
 class DadosExemplo:
-    """Monta cadastros novos a partir dos dados fictícios deste módulo.
-
-    Cada chamada produz objetos independentes. As tuplas acima são somente
-    dados de entrada; os cadastros usam a ListaEncadeada e a árvore próprias.
-    """
+    """Cria objetos independentes a partir de registros integralmente fictícios."""
 
     @staticmethod
     def criar_oficina():
-        """Cria uma oficina com os três veículos de exemplo.
+        """Monta clientes, carros e estoque na mesma oficina.
 
         Returns:
-            Oficina: Nova oficina preenchida com os cadastros fictícios.
+            Oficina: Instância integrada pronta para experimentar.
 
         Raises:
-            TypeError: Se os dados de entrada tiverem tipos incorretos.
-            ValueError: Se os dados editados contiverem valores inválidos.
+            TypeError: Se algum dado editado tiver tipo incorreto.
+            ValueError: Se houver dados inválidos ou duplicados.
         """
         oficina = Oficina()
-        for cliente, placa, modelo in VEICULOS:
-            veiculo = DadosExemplo.criar_veiculo(cliente, placa, modelo)
-            oficina.cadastrar_veiculo(veiculo)
+        DadosExemplo._clientes(oficina)
+        DadosExemplo._veiculos(oficina)
+        DadosExemplo._estoque(oficina)
         return oficina
 
     @staticmethod
-    def criar_veiculo(cliente, placa, modelo):
-        """Monta um veículo com sua própria árvore de componentes.
+    def _clientes(oficina):
+        """Cadastra os clientes fictícios.
 
         Args:
-            cliente (str): Nome fictício do cliente.
-            placa (str): Identificação fictícia do veículo.
-            modelo (str): Modelo de exemplo.
+            oficina (Oficina): Instância que recebe os dados.
+        """
+        for codigo, nome in CLIENTES:
+            oficina.clientes.cadastrar(Cliente(codigo, nome))
+
+    @staticmethod
+    def _veiculos(oficina):
+        """Vincula cada carro ao mesmo objeto de cliente cadastrado.
+
+        Args:
+            oficina (Oficina): Instância que recebe os carros.
+        """
+        for codigo, placa, modelo in VEICULOS:
+            cliente = oficina.clientes.buscar(codigo)
+            oficina.veiculos.cadastrar(DadosExemplo.criar_veiculo(cliente, placa, modelo))
+
+    @staticmethod
+    def criar_veiculo(cliente, placa, modelo):
+        """Monta o carro e sua árvore própria de componentes.
+
+        Args:
+            cliente (Cliente): Cadastro real da instância da oficina, com dados fictícios.
+            placa (str): Identificação do exemplo.
+            modelo (str): Modelo informado.
 
         Returns:
-            Veiculo: Cadastro com componentes independentes dos demais carros.
+            Veiculo: Carro com árvore independente.
 
         Raises:
-            TypeError: Se algum argumento tiver tipo incorreto.
-            ValueError: Se um identificador ou texto obrigatório for inválido.
+            TypeError: Se algum tipo for incorreto.
+            ValueError: Se os dados forem inválidos.
         """
         veiculo = Veiculo(placa, modelo, cliente)
-        for codigo_pai, codigo, nome in COMPONENTES:
-            veiculo.adicionar_componente(codigo_pai, Componente(codigo, nome))
+        for pai, codigo, nome in COMPONENTES:
+            veiculo.adicionar_componente(pai, Componente(codigo, nome))
         return veiculo
+
+    @staticmethod
+    def _estoque(oficina):
+        """Cria dois lotes FIFO por produto de exemplo.
+
+        Args:
+            oficina (Oficina): Instância com o estoque compartilhado.
+        """
+        for codigo, nome, venda, custo in PRODUTOS:
+            produto = Produto(codigo, nome, venda)
+            produto.receber_lote(Lote("LOTE-A", 3, custo))
+            produto.receber_lote(Lote("LOTE-B", 9, custo))
+            oficina.estoque.cadastrar_produto(produto)

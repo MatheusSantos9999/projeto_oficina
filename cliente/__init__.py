@@ -1,1 +1,1 @@
-"""Pacote reservado para o cadastro de clientes."""
+"""Modelos e operações de cliente."""

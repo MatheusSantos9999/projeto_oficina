@@ -1,0 +1,2 @@
+# Projeto executado com Python 3.10 ou superior.
+# Utiliza somente a biblioteca padrão; não há pacotes externos a instalar.

@@ -1,5 +1,6 @@
 """Validações compartilhadas pelos objetos da oficina."""
 from re import fullmatch
+from decimal import Decimal, InvalidOperation
 
 
 class Validacao:
@@ -100,3 +101,66 @@ class Validacao:
             return fullmatch(r"[A-Z0-9]+", placa).group()
         except AttributeError:
             raise ValueError("Placa deve conter letras e números.") from None
+
+    @staticmethod
+    def quantidade(valor):
+        """Valida uma quantidade inteira positiva.
+
+        Args:
+            valor (int): Quantidade solicitada.
+
+        Returns:
+            int: Quantidade validada.
+
+        Raises:
+            TypeError: Se o valor não for inteiro ou for booleano.
+            ValueError: Se a quantidade não for positiva.
+        """
+        Validacao.exigir(type(valor) is int, "Quantidade deve ser inteira.", TypeError)
+        Validacao.exigir(valor > 0, "Quantidade deve ser positiva.")
+        return valor
+
+    @staticmethod
+    def dinheiro(valor, permitir_zero=False):
+        """Valida um valor monetário sem arredondamento silencioso.
+
+        Args:
+            valor (str | int | Decimal): Valor em reais.
+            permitir_zero (bool): Permite mão de obra sem cobrança.
+
+        Returns:
+            Decimal: Valor validado com duas casas decimais.
+
+        Raises:
+            TypeError: Se o valor for float, booleano ou outro tipo.
+            ValueError: Se houver valor inválido, negativo ou fração de centavo.
+        """
+        Validacao.exigir(type(valor) in (str, int, Decimal), "Use texto, inteiro ou Decimal para valores.", TypeError)
+        try:
+            numero = Decimal(valor)
+        except (InvalidOperation, ValueError):
+            raise ValueError("Valor monetário inválido.") from None
+        Validacao.exigir(numero.is_finite(), "Valor deve ser finito.")
+        Validacao.exigir(numero > 0 or (permitir_zero and numero == 0), "Valor monetário fora do intervalo permitido.")
+        return Validacao._centavos(numero)
+
+    @staticmethod
+    def _centavos(numero):
+        """Confere se o valor cabe na precisão monetária utilizada.
+
+        Args:
+            numero (Decimal): Valor finito já validado.
+
+        Returns:
+            Decimal: Valor com duas casas.
+
+        Raises:
+            ValueError: Se o valor não puder ser representado exatamente.
+        """
+        try:
+            normalizado = numero.quantize(Decimal("0.01"))
+        except InvalidOperation:
+            raise ValueError("Valor excede a precisão monetária suportada.") from None
+        Validacao.exigir(numero == normalizado, "Informe no máximo duas casas decimais.")
+        return normalizado
+

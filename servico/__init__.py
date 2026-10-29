@@ -1,1 +1,1 @@
-"""Pacote reservado para o fluxo de serviços."""
+"""Modelos e operações de servico."""

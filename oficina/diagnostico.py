@@ -38,7 +38,8 @@ class Diagnostico:
         self._identificador = Validacao.codigo(identificador)
         self._placa = veiculo.placa
         self._modelo = veiculo.modelo
-        self._cliente = veiculo.cliente
+        self._cliente = veiculo.cliente.nome
+        self._cliente_codigo = veiculo.cliente.codigo
         self._componentes = veiculo.copiar_componentes()
         self._avaliacoes = ListaEncadeada()
         self._encerrado = False
@@ -177,3 +178,9 @@ class Diagnostico:
         """
         self._validar_aberto()
         self._encerrado = True
+
+    @property
+    def cliente_codigo(self):
+        """str: Código do cliente preservado no início da visita."""
+        return self._cliente_codigo
+
